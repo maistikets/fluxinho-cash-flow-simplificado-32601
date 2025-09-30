@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PlansProvider } from '@/contexts/PlansContext';
 import AuthRedirect from '@/components/auth/AuthRedirect';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import AdminRoute from '@/components/admin/AdminRoute';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import UserLayout from '@/components/UserLayout';
@@ -31,12 +32,15 @@ import UserSubscriptionManagement from '@/pages/admin/UserSubscriptionManagement
 import FinancialReports from '@/pages/admin/FinancialReports';
 
 function App() {
+  console.log('App component is rendering');
+  
   return (
-    <Router>
-      <AuthProvider>
-        <PlansProvider>
-          <Toaster />
-          <AuthRedirect>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <PlansProvider>
+            <Toaster />
+            <AuthRedirect>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<LoginPage />} />
@@ -161,6 +165,7 @@ function App() {
         </PlansProvider>
       </AuthProvider>
     </Router>
+    </ErrorBoundary>
   );
 }
 

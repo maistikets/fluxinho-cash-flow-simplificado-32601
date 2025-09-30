@@ -105,9 +105,16 @@ const defaultPlans: Plan[] = [
 ];
 
 export const PlansProvider = ({ children }: { children: React.ReactNode }) => {
+  console.log('PlansProvider initializing');
+  
   const [plans, setPlans] = useState<Plan[]>(() => {
-    const saved = localStorage.getItem('admin-plans');
-    return saved ? JSON.parse(saved) : defaultPlans;
+    try {
+      const saved = localStorage.getItem('admin-plans');
+      return saved ? JSON.parse(saved) : defaultPlans;
+    } catch (error) {
+      console.error('Error loading admin-plans from localStorage:', error);
+      return defaultPlans;
+    }
   });
 
   useEffect(() => {

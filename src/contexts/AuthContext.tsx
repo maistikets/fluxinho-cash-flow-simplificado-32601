@@ -42,14 +42,26 @@ const VALID_CREDENTIALS = {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  console.log('AuthProvider initializing');
+  
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('auth-user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('auth-user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.error('Error loading auth-user from localStorage:', error);
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [users, setUsers] = useState<User[]>(() => {
-    const savedUsers = localStorage.getItem('admin-users');
-    return savedUsers ? JSON.parse(savedUsers) : defaultUsers;
+    try {
+      const savedUsers = localStorage.getItem('admin-users');
+      return savedUsers ? JSON.parse(savedUsers) : defaultUsers;
+    } catch (error) {
+      console.error('Error loading admin-users from localStorage:', error);
+      return defaultUsers;
+    }
   });
 
   useEffect(() => {
