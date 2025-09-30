@@ -11,7 +11,6 @@ import Dashboard from '@/pages/Dashboard';
 import Landing from '@/pages/Landing';
 import LoginPage from '@/pages/LoginPage';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
-import UserManagement from '@/pages/admin/UserManagement';
 import PlanManagement from '@/pages/admin/PlanManagement';
 import AdminSettings from '@/pages/admin/AdminSettings';
 import ProfileSettings from '@/pages/ProfileSettings';
@@ -28,7 +27,7 @@ import PaymentSuccess from '@/pages/PaymentSuccess';
 import PaymentCanceled from '@/pages/PaymentCanceled';
 import NotFound from '@/pages/NotFound';
 import { Toaster } from '@/components/ui/toaster';
-import FinancialManagement from '@/pages/admin/FinancialManagement';
+import UserSubscriptionManagement from '@/pages/admin/UserSubscriptionManagement';
 import FinancialReports from '@/pages/admin/FinancialReports';
 
 function App() {
@@ -106,13 +105,13 @@ function App() {
                   </div>
                 </AdminRoute>
               } />
-              <Route path="/admin/users" element={
+              <Route path="/admin/users-subscriptions" element={
                 <AdminRoute>
                   <div className="min-h-screen bg-gray-50">
                     <AdminSidebar />
                     <main className="lg:pl-72">
                       <div className="p-6">
-                        <UserManagement />
+                        <UserSubscriptionManagement />
                       </div>
                     </main>
                   </div>
@@ -125,18 +124,6 @@ function App() {
                     <main className="lg:pl-72">
                       <div className="p-6">
                         <PlanManagement />
-                      </div>
-                    </main>
-                  </div>
-                </AdminRoute>
-              } />
-              <Route path="/admin/financial" element={
-                <AdminRoute>
-                  <div className="min-h-screen bg-gray-50">
-                    <AdminSidebar />
-                    <main className="lg:pl-72">
-                      <div className="p-6">
-                        <FinancialManagement />
                       </div>
                     </main>
                   </div>

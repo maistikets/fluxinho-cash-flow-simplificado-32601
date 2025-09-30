@@ -27,14 +27,9 @@ const AdminSidebar = () => {
       icon: LayoutDashboard,
     },
     {
-      title: 'Gestão de Usuários',
-      href: '/admin/users',
+      title: 'Usuários e Assinaturas',
+      href: '/admin/users-subscriptions',
       icon: Users,
-    },
-    {
-      title: 'Gestão de Assinantes',
-      href: '/admin/financial',
-      icon: UserCheck,
     },
     {
       title: 'Gestão de Planos',
