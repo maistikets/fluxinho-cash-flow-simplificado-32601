@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +9,12 @@ import { User, Edit, Save, X, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const UserProfile = () => {
-  const { user } = useAuth();
+  const { user, profile, roles, updateProfile } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: profile?.name || user?.email || '',
     email: user?.email || '',
     phone: '(11) 99999-9999',
     company: 'Empresa Teste',
@@ -83,17 +82,16 @@ const UserProfile = () => {
     }
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast({
-      title: "Perfil atualizado",
-      description: "Suas informações foram salvas com sucesso.",
-    });
+  const handleSave = async () => {
+    const { error } = await updateProfile({ name: formData.name });
+    if (!error) {
+      setIsEditing(false);
+    }
   };
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
+      name: profile?.name || user?.email || '',
       email: user?.email || '',
       phone: '(11) 99999-9999',
       company: 'Empresa Teste',
@@ -122,11 +120,13 @@ const UserProfile = () => {
 
     setFormData({ ...formData, [field]: formattedValue });
 
-    // Auto buscar CEP quando completo
     if (field === 'cep' && formattedValue.replace(/\D/g, '').length === 8) {
       searchCEP(formattedValue);
     }
   };
+
+  const displayName = profile?.name || user?.email || 'Usuário';
+  const userRole = roles.length > 0 ? roles[0].role : 'user';
 
   return (
     <Card>
@@ -162,16 +162,15 @@ const UserProfile = () => {
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarFallback className="text-lg">
-              {user?.name?.split(' ').map(n => n[0]).join('') || 'UT'}
+              {displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{user?.name}</p>
-            <p className="text-sm text-gray-500">{user?.role}</p>
+            <p className="font-medium">{displayName}</p>
+            <p className="text-sm text-gray-500 capitalize">{userRole}</p>
           </div>
         </div>
 
-        {/* Dados Pessoais */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Dados Pessoais</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -200,8 +199,7 @@ const UserProfile = () => {
               <Input
                 id="email"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                disabled={!isEditing}
+                disabled
               />
             </div>
             <div className="space-y-2">
@@ -227,7 +225,6 @@ const UserProfile = () => {
           </div>
         </div>
 
-        {/* Endereço */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <MapPin className="h-5 w-5" />
