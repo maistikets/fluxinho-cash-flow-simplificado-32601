@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Sidebar,
@@ -72,7 +71,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, profile, roles, signOut } = useAuth();
   const navigate = useNavigate();
   const { state, toggleSidebar } = useSidebar();
 
@@ -84,6 +83,9 @@ export function AppSidebar() {
       console.error('Erro ao fazer logout:', error);
     }
   };
+
+  const displayName = profile?.name || user?.email || 'Usuário';
+  const userRole = roles.length > 0 ? roles[0].role : 'user';
 
   return (
     <Sidebar 
@@ -105,7 +107,6 @@ export function AppSidebar() {
               </div>
             )}
           </div>
-          {/* Botão fechar em mobile e tablet */}
           <div className="lg:hidden">
             <SidebarTrigger className="p-2 hover:bg-gray-100 rounded-md transition-colors">
               <X className="h-5 w-5" />
@@ -132,7 +133,6 @@ export function AppSidebar() {
                     tooltip={state === "collapsed" ? item.title : undefined}
                   >
                     <Link to={item.url} className="flex items-center gap-3 px-3" onClick={() => {
-                      // Fechar sidebar em mobile e tablet após clicar
                       if (window.innerWidth < 1024) {
                         toggleSidebar();
                       }
@@ -190,8 +190,8 @@ export function AppSidebar() {
                   <User className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 text-sm min-w-0">
-                  <p className="font-medium text-gray-700 truncate">{user?.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.role}</p>
+                  <p className="font-medium text-gray-700 truncate">{displayName}</p>
+                  <p className="text-xs text-gray-500 truncate capitalize">{userRole}</p>
                 </div>
                 <Button 
                   variant="ghost" 

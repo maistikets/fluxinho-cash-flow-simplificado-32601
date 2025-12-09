@@ -1,22 +1,20 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Crown, Heart } from 'lucide-react';
-import { getTrialDaysLeft, isTrialExpired, isTrialExpiring } from '@/utils/trialHelpers';
+import { Crown, Heart } from 'lucide-react';
 
 const TrialBanner = () => {
-  const { user } = useAuth();
+  const { user, subscription, isTrialExpired, getTrialDaysLeft } = useAuth();
   const navigate = useNavigate();
 
-  if (!user || user.planType !== 'trial') {
+  if (!user || !subscription || subscription.plan_type !== 'trial') {
     return null;
   }
 
-  const daysLeft = getTrialDaysLeft(user);
-  const expired = isTrialExpired(user);
-  const expiring = isTrialExpiring(user);
+  const daysLeft = getTrialDaysLeft();
+  const expired = isTrialExpired();
+  const expiring = daysLeft <= 2 && !expired;
 
   if (expired) {
     return (
