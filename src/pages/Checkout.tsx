@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlans } from '@/contexts/PlansContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import PlanHeader from '@/components/PlanHeader';
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, changeUserPlan } = useAuth();
+  const { user, refreshUserData } = useAuth();
   const { plans } = usePlans();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -41,15 +42,27 @@ const Checkout = () => {
   const handlePayment = async () => {
     setLoading(true);
     
-    // Simular processamento de pagamento
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Simular 90% de sucesso
       const success = Math.random() > 0.1;
       
       if (success) {
-        changeUserPlan(user.id, planId as any);
+        const now = new Date().toISOString();
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            plan_type: planId as any,
+            is_active: true,
+            subscription_start_date: now,
+            last_payment_date: now,
+          })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        await refreshUserData();
+
         toast({
           title: "Pagamento aprovado!",
           description: "Sua assinatura foi ativada com sucesso"
@@ -85,7 +98,6 @@ const Checkout = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Resumo do Plano */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -126,7 +138,6 @@ const Checkout = () => {
               </CardContent>
             </Card>
 
-            {/* Formulário de Pagamento */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -140,77 +151,32 @@ const Checkout = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome completo</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Seu nome completo"
-                  />
+                  <Input id="name" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Seu nome completo" />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="seu@email.com"
-                  />
+                  <Input id="email" type="email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="seu@email.com" />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="cardNumber">Número do cartão</Label>
-                  <Input
-                    id="cardNumber"
-                    value={formData.cardNumber}
-                    onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-                    placeholder="1234 5678 9012 3456"
-                    maxLength={19}
-                  />
+                  <Input id="cardNumber" value={formData.cardNumber} onChange={(e) => handleInputChange('cardNumber', e.target.value)} placeholder="1234 5678 9012 3456" maxLength={19} />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="expiryDate">Validade</Label>
-                    <Input
-                      id="expiryDate"
-                      value={formData.expiryDate}
-                      onChange={(e) => handleInputChange('expiryDate', e.target.value)}
-                      placeholder="MM/AA"
-                      maxLength={5}
-                    />
+                    <Input id="expiryDate" value={formData.expiryDate} onChange={(e) => handleInputChange('expiryDate', e.target.value)} placeholder="MM/AA" maxLength={5} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cvv">CVV</Label>
-                    <Input
-                      id="cvv"
-                      value={formData.cvv}
-                      onChange={(e) => handleInputChange('cvv', e.target.value)}
-                      placeholder="123"
-                      maxLength={4}
-                    />
+                    <Input id="cvv" value={formData.cvv} onChange={(e) => handleInputChange('cvv', e.target.value)} placeholder="123" maxLength={4} />
                   </div>
                 </div>
-
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    🔒 Pagamento 100% seguro. Seus dados são protegidos por criptografia SSL.
-                  </p>
+                  <p className="text-sm text-blue-800">🔒 Pagamento 100% seguro.</p>
                 </div>
-
-                <Button 
-                  onClick={handlePayment}
-                  disabled={loading || !formData.name || !formData.cardNumber}
-                  className="w-full"
-                  size="lg"
-                >
+                <Button onClick={handlePayment} disabled={loading || !formData.name || !formData.cardNumber} className="w-full" size="lg">
                   {loading ? 'Processando...' : `Pagar ${selectedPlan.price}`}
                 </Button>
-
-                <p className="text-xs text-gray-500 text-center">
-                  Ao continuar, você concorda com nossos termos de serviço
-                </p>
               </CardContent>
             </Card>
           </div>

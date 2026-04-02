@@ -1,751 +1,295 @@
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { usePlans } from '@/contexts/PlansContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import SubscriptionActionsModal from '@/components/admin/SubscriptionActionsModal';
-import PlanChangeHistory from '@/components/PlanChangeHistory';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  CreditCard, 
-  Calendar,
-  AlertTriangle,
-  Download,
-  Filter,
-  Settings,
-  UserCheck,
-  RefreshCw,
-  Plus,
-  Pencil,
-  Trash2,
-  UserX
-} from 'lucide-react';
-import { getPlanBadge, getRoleBadge, formatCurrency, getStatusBadge } from '@/utils/planHelpers';
+import { DollarSign, TrendingUp, TrendingDown, UserCheck, Download, Filter, RefreshCw, Settings } from 'lucide-react';
+import { formatCurrency } from '@/utils/planHelpers';
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  plan_type: string;
+  is_active: boolean;
+  total_paid: number;
+  monthly_revenue: number;
+  trial_end_date: string | null;
+  subscription_start_date: string | null;
+  last_payment_date: string | null;
+  role: string;
+}
 
 const UserSubscriptionManagement = () => {
-  const { getAllUsers, updateUser, deleteUser, createUser, toggleUserStatus, changeUserPlan } = useAuth();
   const { plans } = usePlans();
   const { toast } = useToast();
-  const [users, setUsers] = useState(getAllUsers());
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState({
-    name: '',
-    email: '',
-    role: 'user' as 'user' | 'admin',
-    planType: 'trial' as 'trial' | 'basic' | 'premium' | 'annual',
-    isActive: true
-  });
+  const [selectedPlan, setSelectedPlan] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
 
-  const refreshUsers = () => {
-    setUsers(getAllUsers());
-  };
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+      if (profilesError) throw profilesError;
 
-  const filteredUsers = users.filter(user => 
+      const { data: subs, error: subsError } = await supabase
+        .from('subscriptions')
+        .select('*');
+      if (subsError) throw subsError;
+
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*');
+      if (rolesError) throw rolesError;
+
+      const merged = (profiles || []).map(p => {
+        const sub = (subs || []).find(s => s.user_id === p.id);
+        const role = (roles || []).find(r => r.user_id === p.id);
+        return {
+          id: p.id,
+          name: p.name,
+          email: p.email,
+          plan_type: sub?.plan_type || 'trial',
+          is_active: sub?.is_active ?? true,
+          total_paid: Number(sub?.total_paid || 0),
+          monthly_revenue: Number(sub?.monthly_revenue || 0),
+          trial_end_date: sub?.trial_end_date,
+          subscription_start_date: sub?.subscription_start_date,
+          last_payment_date: sub?.last_payment_date,
+          role: role?.role || 'user',
+        };
+      });
+
+      setUsers(merged);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({ title: 'Erro', description: 'Não foi possível carregar usuários.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const filteredUsers = users.filter(user =>
     (user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     user.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
-    (selectedPlan === 'all' || user.planType === selectedPlan) &&
-    (selectedStatus === 'all' || 
-     (selectedStatus === 'active' && user.isActive) ||
-     (selectedStatus === 'inactive' && !user.isActive) ||
-     (selectedStatus === 'trial_expired' && user.isTrialExpired)) &&
-    (selectedRole === 'all' || user.role === selectedRole)
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (selectedPlan === 'all' || user.plan_type === selectedPlan) &&
+    (selectedStatus === 'all' ||
+      (selectedStatus === 'active' && user.is_active) ||
+      (selectedStatus === 'inactive' && !user.is_active))
   );
 
-  // Cálculos de métricas financeiras
-  const totalRevenue = users.reduce((sum, user) => sum + (user.totalPaid || 0), 0);
-  const monthlyRevenue = users.reduce((sum, user) => sum + (user.monthlyRevenue || 0), 0);
-  const activeSubscriptions = users.filter(user => user.isActive && user.planType !== 'trial').length;
-  const expiredTrials = users.filter(user => user.isTrialExpired).length;
-  const churnRate = users.filter(user => !user.isActive).length / users.length * 100;
+  const totalRevenue = users.reduce((sum, u) => sum + u.total_paid, 0);
+  const monthlyRevenue = users.reduce((sum, u) => sum + u.monthly_revenue, 0);
+  const activeSubscriptions = users.filter(u => u.is_active && u.plan_type !== 'trial').length;
+  const churnRate = users.length > 0 ? (users.filter(u => !u.is_active).length / users.length * 100) : 0;
 
-  const planRevenue = plans.reduce((acc, plan) => {
-    acc[plan.id] = users.filter(u => u.planType === plan.id && u.isActive).reduce((sum, u) => sum + (u.monthlyRevenue || 0), 0);
-    return acc;
-  }, {} as Record<string, number>);
+  const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ is_active: !currentStatus })
+      .eq('user_id', userId);
 
-  const handleCreateUser = () => {
-    if (!newUser.name || !newUser.email) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const userToCreate = {
-      ...newUser,
-      createdAt: new Date().toISOString(),
-      totalPaid: 0,
-      monthlyRevenue: 0
-    };
-
-    const success = createUser(userToCreate);
-    if (success) {
-      toast({
-        title: "Usuário criado",
-        description: `Usuário ${newUser.name} foi criado com sucesso.`,
-      });
-      setNewUser({
-        name: '',
-        email: '',
-        role: 'user',
-        planType: 'trial',
-        isActive: true
-      });
-      setIsCreateDialogOpen(false);
-      refreshUsers();
+    if (error) {
+      toast({ title: 'Erro', description: 'Falha ao alterar status.', variant: 'destructive' });
     } else {
-      toast({
-        title: "Erro",
-        description: "Email já existe ou erro interno.",
-        variant: "destructive"
-      });
+      toast({ title: 'Sucesso', description: `Status alterado.` });
+      fetchUsers();
     }
   };
 
-  const handleUpdateUser = () => {
-    if (!editingUser) return;
+  const handleChangePlan = async (userId: string, newPlan: string) => {
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ plan_type: newPlan as any })
+      .eq('user_id', userId);
 
-    const success = updateUser(editingUser.id, {
-      name: editingUser.name,
-      email: editingUser.email,
-      role: editingUser.role,
-      planType: editingUser.planType,
-      isActive: editingUser.isActive
-    });
-
-    if (success) {
-      toast({
-        title: "Usuário atualizado",
-        description: `Usuário ${editingUser.name} foi atualizado com sucesso.`,
-      });
-      setEditingUser(null);
-      refreshUsers();
+    if (error) {
+      toast({ title: 'Erro', description: 'Falha ao alterar plano.', variant: 'destructive' });
     } else {
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar usuário.",
-        variant: "destructive"
-      });
+      toast({ title: 'Plano alterado', description: `Plano atualizado com sucesso.` });
+      fetchUsers();
     }
-  };
-
-  const handleDeleteUser = (userId: string, userName: string) => {
-    const success = deleteUser(userId);
-    if (success) {
-      toast({
-        title: "Usuário removido",
-        description: `Usuário ${userName} foi removido com sucesso.`,
-      });
-      refreshUsers();
-    }
-  };
-
-  const handleToggleStatus = (userId: string, userName: string, currentStatus: boolean) => {
-    const success = toggleUserStatus(userId);
-    if (success) {
-      toast({
-        title: "Status alterado",
-        description: `Usuário ${userName} foi ${currentStatus ? 'desativado' : 'ativado'}.`,
-      });
-      refreshUsers();
-    }
-  };
-
-  const handleChangePlan = (userId: string, userName: string, newPlan: 'trial' | 'basic' | 'premium' | 'annual') => {
-    const success = changeUserPlan(userId, newPlan);
-    if (success) {
-      const currentDate = new Date().toLocaleDateString('pt-BR');
-      const planNames = {
-        trial: 'Teste Gratuito',
-        basic: 'Mensal',
-        premium: 'Trimestral', 
-        annual: 'Anual'
-      };
-      
-      toast({
-        title: "✅ Plano alterado efetivamente!",
-        description: `${userName} foi movido para o plano ${planNames[newPlan]} em ${currentDate}. Datas de cobrança atualizadas automaticamente.`,
-      });
-      refreshUsers();
-    }
-  };
-
-  const handleManageSubscription = (user: any) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
   };
 
   const handleExportData = () => {
-    const csvData = filteredUsers.map(user => ({
-      Nome: user.name,
-      Email: user.email,
-      Role: user.role,
-      Plano: user.planType,
-      Status: user.isActive ? 'Ativo' : 'Inativo',
-      'Total Pago': user.totalPaid || 0,
-      'Receita Mensal': user.monthlyRevenue || 0,
-      'Data Criação': user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '-',
-      'Último Pagamento': user.lastPaymentDate ? new Date(user.lastPaymentDate).toLocaleDateString('pt-BR') : '-'
+    const csvData = filteredUsers.map(u => ({
+      Nome: u.name, Email: u.email, Plano: u.plan_type,
+      Status: u.is_active ? 'Ativo' : 'Inativo',
+      'Total Pago': u.total_paid, 'Receita Mensal': u.monthly_revenue
     }));
-
-    const csv = [
-      Object.keys(csvData[0]).join(','),
-      ...csvData.map(row => Object.values(row).join(','))
-    ].join('\n');
-
+    const csv = [Object.keys(csvData[0] || {}).join(','), ...csvData.map(row => Object.values(row).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio-usuarios-assinantes-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `usuarios-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    toast({ title: 'Exportado', description: 'Relatório baixado com sucesso.' });
+  };
 
-    toast({
-      title: "Relatório exportado",
-      description: "O relatório foi baixado com sucesso.",
-    });
+  const getPlanBadge = (planType: string) => {
+    switch (planType) {
+      case 'trial': return <Badge className="bg-blue-100 text-blue-800">Teste</Badge>;
+      case 'basic': return <Badge variant="outline">Básico</Badge>;
+      case 'premium': return <Badge className="bg-purple-100 text-purple-800">Premium</Badge>;
+      case 'annual': return <Badge className="bg-green-100 text-green-800">Anual</Badge>;
+      default: return <Badge variant="secondary">{planType}</Badge>;
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Usuários e Assinaturas</h1>
-          <p className="text-gray-600">Gestão completa de usuários, assinaturas e receitas</p>
+          <p className="text-gray-600">Gestão completa de usuários e receitas</p>
         </div>
         <div className="flex gap-3">
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Criar Usuário
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Novo Usuário</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados para criar um novo usuário no sistema.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="create-name">Nome</Label>
-                  <Input
-                    id="create-name"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Nome completo"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="create-email">Email</Label>
-                  <Input
-                    id="create-email"
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="usuario@exemplo.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="create-role">Papel</Label>
-                  <Select value={newUser.role} onValueChange={(value: 'user' | 'admin') => setNewUser(prev => ({ ...prev, role: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">Usuário</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="create-plan">Plano</Label>
-                  <Select value={newUser.planType} onValueChange={(value: 'trial' | 'basic' | 'premium' | 'annual') => setNewUser(prev => ({ ...prev, planType: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {plans.filter(p => p.active).map((plan) => (
-                        <SelectItem key={plan.id} value={plan.id}>
-                          {plan.name} - {plan.price} {plan.period}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateUser}>
-                  Criar Usuário
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Button 
-            variant="outline" 
-            onClick={refreshUsers}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
+          <Button variant="outline" onClick={fetchUsers} className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />Atualizar
           </Button>
           <Button onClick={handleExportData} className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Exportar
+            <Download className="h-4 w-4" />Exportar
           </Button>
         </div>
       </div>
 
-      {/* Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">
-              Valor total arrecadado
-            </p>
-          </CardContent>
+          <CardContent><div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div></CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(monthlyRevenue)}</div>
-            <p className="text-xs text-muted-foreground">
-              Receita recorrente mensal
-            </p>
-          </CardContent>
+          <CardContent><div className="text-2xl font-bold">{formatCurrency(monthlyRevenue)}</div></CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Assinaturas Ativas</CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeSubscriptions}</div>
-            <p className="text-xs text-muted-foreground">
-              Usuários pagantes ativos
-            </p>
-          </CardContent>
+          <CardContent><div className="text-2xl font-bold">{activeSubscriptions}</div></CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Taxa de Churn</CardTitle>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{churnRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
-              Usuários que cancelaram
-            </p>
-          </CardContent>
+          <CardContent><div className="text-2xl font-bold">{churnRate.toFixed(1)}%</div></CardContent>
         </Card>
       </div>
 
-      {/* Métricas por Plano */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {plans.filter(p => p.active && p.id !== 'trial').map((plan) => (
-          <Card key={plan.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className={`h-5 w-5 ${plan.id === 'premium' ? 'text-purple-600' : plan.id === 'annual' ? 'text-green-600' : ''}`} />
-                {plan.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-2xl font-bold">{formatCurrency(planRevenue[plan.id] || 0)}</p>
-                <p className="text-sm text-gray-600">
-                  {users.filter(u => u.planType === plan.id && u.isActive).length} usuários ativos
-                </p>
-                <p className="text-xs text-gray-500">
-                  {plan.price} {plan.period}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
-              Testes Expirados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p className="text-2xl font-bold">{expiredTrials}</p>
-              <p className="text-sm text-gray-600">
-                Conversão necessária
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtros Avançados
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" />Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="search">Buscar</Label>
-              <Input
-                id="search"
-                placeholder="Nome ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <Label>Buscar</Label>
+              <Input placeholder="Nome ou email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Plano</Label>
               <Select value={selectedPlan} onValueChange={setSelectedPlan}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os planos</SelectItem>
-                  {plans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">Todos</SelectItem>
+                  {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="active">Ativos</SelectItem>
                   <SelectItem value="inactive">Inativos</SelectItem>
-                  <SelectItem value="trial_expired">Teste Expirado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Tipo de Usuário</Label>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="user">Usuários</SelectItem>
-                  <SelectItem value="admin">Administradores</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="mt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedPlan('all');
-                setSelectedStatus('all');
-                setSelectedRole('all');
-              }}
-            >
-              Limpar Todos os Filtros
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabela Unificada */}
       <Card>
         <CardHeader>
-          <CardTitle>Gestão Completa ({filteredUsers.length} usuários)</CardTitle>
-          <CardDescription>Todos os usuários e assinaturas em um único local</CardDescription>
+          <CardTitle>Usuários ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Total Pago</TableHead>
-                <TableHead>Receita Mensal</TableHead>
-                <TableHead>Último Pgto</TableHead>
-                <TableHead>Próximo Pgto</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium">{user.name}</p>
-                        {getRoleBadge(user.role)}
-                      </div>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                      <p className="text-xs text-gray-400">
-                        Criado: {user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '-'}
-                      </p>
-                      {user.subscriptionStartDate && user.subscriptionStartDate !== user.createdAt && (
-                        <p className="text-xs text-blue-600">
-                          Plano desde: {new Date(user.subscriptionStartDate).toLocaleDateString('pt-BR')}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getPlanBadge(user.planType, user.isActive, plans)}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(user)}
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">
-                      {formatCurrency(user.totalPaid || 0)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">
-                      {formatCurrency(user.monthlyRevenue || 0)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {user.lastPaymentDate ? (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-gray-400" />
-                        <span className="text-sm">
-                          {new Date(user.lastPaymentDate).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {user.nextPaymentDate ? (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-blue-500" />
-                        <span className="text-sm">
-                          {new Date(user.nextPaymentDate).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={user.planType}
-                        onValueChange={(value: any) => handleChangePlan(user.id, user.name, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {plans.filter(p => p.active).map((plan) => (
-                            <SelectItem key={plan.id} value={plan.id}>
-                              {plan.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleManageSubscription(user)}
-                      >
-                        <Settings className="h-3 w-3" />
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleStatus(user.id, user.name, user.isActive || false)}
-                        className={user.isActive ? "text-red-600" : "text-green-600"}
-                      >
-                        {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                      </Button>
-
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingUser({ ...user })}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Editar Usuário</DialogTitle>
-                            <DialogDescription>
-                              Edite as informações do usuário.
-                            </DialogDescription>
-                          </DialogHeader>
-                          {editingUser && (
-                            <div className="space-y-4">
-                              <div className="space-y-2">
-                                <Label>Nome</Label>
-                                <Input
-                                  value={editingUser.name}
-                                  onChange={(e) => setEditingUser(prev => ({ ...prev, name: e.target.value }))}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Email</Label>
-                                <Input
-                                  value={editingUser.email}
-                                  onChange={(e) => setEditingUser(prev => ({ ...prev, email: e.target.value }))}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Papel</Label>
-                                <Select
-                                  value={editingUser.role}
-                                  onValueChange={(value) => setEditingUser(prev => ({ ...prev, role: value }))}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="user">Usuário</SelectItem>
-                                    <SelectItem value="admin">Administrador</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Plano</Label>
-                                <Select
-                                  value={editingUser.planType}
-                                  onValueChange={(value) => setEditingUser(prev => ({ ...prev, planType: value }))}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {plans.filter(p => p.active).map((plan) => (
-                                      <SelectItem key={plan.id} value={plan.id}>
-                                        {plan.name} - {plan.price} {plan.period}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          )}
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setEditingUser(null)}>
-                              Cancelar
-                            </Button>
-                            <Button onClick={handleUpdateUser}>
-                              Salvar Alterações
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-
-                      {user.role !== 'admin' && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja remover o usuário {user.name}? Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteUser(user.id, user.name)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Confirmar Exclusão
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </TableCell>
+          {isLoading ? (
+            <p className="text-center py-8 text-gray-500">Carregando...</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Total Pago</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              Nenhum usuário encontrado com os filtros aplicados.
-            </div>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map(user => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{getPlanBadge(user.plan_type)}</TableCell>
+                    <TableCell>
+                      <Badge variant={user.is_active ? "default" : "destructive"}>
+                        {user.is_active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatCurrency(user.total_paid)}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleToggleStatus(user.id, user.is_active)}>
+                          {user.is_active ? 'Desativar' : 'Ativar'}
+                        </Button>
+                        <Select onValueChange={(val) => handleChangePlan(user.id, val)}>
+                          <SelectTrigger className="w-32 h-8">
+                            <SelectValue placeholder="Plano" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {plans.filter(p => p.id !== user.plan_type).map(p => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
-
-      {/* Modal de Gestão de Assinatura */}
-      <SubscriptionActionsModal
-        user={selectedUser}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
-
-      {/* Histórico de Mudanças de Planos */}
-      <PlanChangeHistory />
     </div>
   );
 };
