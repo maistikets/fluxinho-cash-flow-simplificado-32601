@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,14 +10,10 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 const PlanSettings = () => {
-  const { user, checkTrialStatus } = useAuth();
+  const { user } = useAuth();
   const { plans } = usePlans();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    checkTrialStatus();
-  }, [checkTrialStatus]);
 
   const handleSelectPlan = (planId: string) => {
     if (planId === user?.planType) return;
@@ -43,7 +38,6 @@ const PlanSettings = () => {
         <PlanStatusSection />
       </div>
 
-      {/* Planos Disponíveis com PlanCard */}
       <Card>
         <CardHeader>
           <CardTitle>Planos Disponíveis</CardTitle>
