@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Plus, CreditCard as CreditCardIcon, Trash2, Edit2 } from 'lucide-react';
+import CreditCardSpendingChart from '@/components/CreditCardSpendingChart';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import CreditCardForm from '@/components/CreditCardForm';
 import CreditCardDetail from '@/components/CreditCardDetail';
@@ -97,6 +98,11 @@ const Cartoes: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Gráfico de evolução */}
+      {cards.length > 0 && (
+        <CreditCardSpendingChart cards={cards} transactions={cardTransactions} />
       )}
 
       <CreditCardForm
