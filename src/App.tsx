@@ -23,6 +23,7 @@ import FluxoCaixa from '@/pages/FluxoCaixa';
 import Relatorios from '@/pages/Relatorios';
 import Metas from '@/pages/Metas';
 import Configuracoes from '@/pages/Configuracoes';
+import Cartoes from '@/pages/Cartoes';
 import Checkout from '@/pages/Checkout';
 import PaymentSuccess from '@/pages/PaymentSuccess';
 import PaymentCanceled from '@/pages/PaymentCanceled';
@@ -78,6 +79,11 @@ function App() {
               <Route path="/metas" element={
                 <UserLayout>
                   <Metas />
+                </UserLayout>
+              } />
+              <Route path="/cartoes" element={
+                <UserLayout>
+                  <Cartoes />
                 </UserLayout>
               } />
               <Route path="/configuracoes" element={

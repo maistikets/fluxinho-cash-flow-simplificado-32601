@@ -67,6 +67,12 @@ const menuItems = [
     icon: Target,
     color: "text-purple-600"
   },
+  {
+    title: "Cartões",
+    url: "/cartoes",
+    icon: CreditCard,
+    color: "text-indigo-600"
+  },
 ];
 
 export function AppSidebar() {
