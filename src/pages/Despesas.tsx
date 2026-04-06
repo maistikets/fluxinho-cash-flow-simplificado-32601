@@ -2,6 +2,7 @@
 import React from 'react';
 import { useFinancialData } from '@/hooks/useFinancialData';
 import { useMonthlyFilters } from '@/hooks/useMonthlyFilters';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import TransactionTable from '@/components/TransactionTable';
 import TransactionFilters from '@/components/TransactionFilters';
 import MetricCard from '@/components/MetricCard';
@@ -11,6 +12,7 @@ import TransactionForm from '@/components/TransactionForm';
 
 const Despesas = () => {
   const { transactions, categories, markTransactionAsPaid, addTransaction, updateTransaction, deleteTransaction } = useFinancialData();
+  const { cards, addCardTransaction } = useCreditCards();
   const { filters, setFilters, filteredTransactions } = useMonthlyFilters(transactions);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
@@ -105,6 +107,8 @@ const Despesas = () => {
         categories={categories}
         type="expense"
         editingTransaction={editingTransaction}
+        creditCards={cards}
+        onAddCardTransaction={addCardTransaction}
       />
     </div>
   );
