@@ -2,6 +2,7 @@
 import React from 'react';
 import { useFinancialData } from '@/hooks/useFinancialData';
 import { useMonthlyFilters } from '@/hooks/useMonthlyFilters';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import TransactionTable from '@/components/TransactionTable';
 import TransactionFilters from '@/components/TransactionFilters';
 import MetricCard from '@/components/MetricCard';
@@ -14,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 
 const Receitas = () => {
   const { transactions, categories, markTransactionAsPaid, addTransaction, updateTransaction, deleteTransaction, notifications } = useFinancialData();
+  const { cards, addCardTransaction } = useCreditCards();
   const { filters, setFilters, filteredTransactions } = useMonthlyFilters(transactions);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -144,6 +146,8 @@ const Receitas = () => {
         categories={categories}
         type="income"
         editingTransaction={editingTransaction}
+        creditCards={cards}
+        onAddCardTransaction={addCardTransaction}
       />
     </div>
   );
