@@ -24,7 +24,8 @@ import {
   DollarSign,
   User,
   LogOut,
-  X
+  X,
+  CreditCard
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -66,6 +67,12 @@ const menuItems = [
     url: "/metas",
     icon: Target,
     color: "text-purple-600"
+  },
+  {
+    title: "Cartões",
+    url: "/cartoes",
+    icon: CreditCard,
+    color: "text-indigo-600"
   },
 ];
 

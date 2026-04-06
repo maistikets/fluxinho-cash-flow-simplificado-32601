@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      credit_card_transactions: {
+        Row: {
+          card_id: string
+          created_at: string
+          description: string
+          id: string
+          installment_amount: number
+          installment_number: number
+          reference_month: string
+          total_amount: number
+          total_installments: number
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          description: string
+          id?: string
+          installment_amount: number
+          installment_number?: number
+          reference_month?: string
+          total_amount: number
+          total_installments?: number
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          installment_amount?: number
+          installment_number?: number
+          reference_month?: string
+          total_amount?: number
+          total_installments?: number
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_card_transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_card_transactions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_cards: {
+        Row: {
+          brand: string
+          closing_day: number
+          color: string | null
+          created_at: string
+          credit_limit: number
+          due_day: number
+          id: string
+          is_active: boolean
+          last_four_digits: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand?: string
+          closing_day?: number
+          color?: string | null
+          created_at?: string
+          credit_limit?: number
+          due_day?: number
+          id?: string
+          is_active?: boolean
+          last_four_digits?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string
+          closing_day?: number
+          color?: string | null
+          created_at?: string
+          credit_limit?: number
+          due_day?: number
+          id?: string
+          is_active?: boolean
+          last_four_digits?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           category: string | null

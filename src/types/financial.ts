@@ -40,3 +40,32 @@ export interface CashFlowData {
   expenses: number;
   balance: number;
 }
+
+export interface CreditCard {
+  id: string;
+  user_id: string;
+  name: string;
+  brand: string;
+  last_four_digits: string | null;
+  credit_limit: number;
+  closing_day: number;
+  due_day: number;
+  color: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditCardTransaction {
+  id: string;
+  user_id: string;
+  card_id: string;
+  transaction_id: string | null;
+  description: string;
+  total_amount: number;
+  installment_number: number;
+  total_installments: number;
+  installment_amount: number;
+  reference_month: string;
+  created_at: string;
+}
