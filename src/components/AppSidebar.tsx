@@ -24,7 +24,8 @@ import {
   DollarSign,
   User,
   LogOut,
-  X
+  X,
+  CreditCard
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
