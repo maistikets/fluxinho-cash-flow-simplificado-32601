@@ -138,6 +138,12 @@ export function useCreditCards() {
     }
   };
 
+  const payInvoice = async (cardId: string) => {
+    toast({ title: "Fatura paga!", description: "O pagamento foi registrado e debitado do seu saldo." });
+    // Refresh transactions after payment
+    await fetchCardTransactions();
+  };
+
   const getCardUsed = useCallback((cardId: string) => {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -164,5 +170,6 @@ export function useCreditCards() {
     fetchCardTransactions,
     getCardUsed,
     getCardAvailable,
+    payInvoice,
   };
 }

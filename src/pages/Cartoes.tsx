@@ -3,25 +3,46 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Plus, CreditCard as CreditCardIcon, Trash2, Edit2 } from 'lucide-react';
+import { Plus, CreditCard as CreditCardIcon, Trash2, Edit2, Lock, Unlock } from 'lucide-react';
 import CreditCardSpendingChart from '@/components/CreditCardSpendingChart';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import CreditCardForm from '@/components/CreditCardForm';
-import CreditCardDetail from '@/components/CreditCardDetail';
+import CreditCardDetail, { getInvoiceStatus } from '@/components/CreditCardDetail';
 import type { CreditCard } from '@/types/financial';
+import { useFinancialData } from '@/hooks/useFinancialData';
 
 const brandLabels: Record<string, string> = {
   visa: 'Visa', mastercard: 'Mastercard', elo: 'Elo', amex: 'Amex', outro: 'Outro',
 };
 
 const Cartoes: React.FC = () => {
-  const { cards, cardTransactions, isLoading, addCard, updateCard, deleteCard, getCardUsed, getCardAvailable } = useCreditCards();
+  const { cards, cardTransactions, isLoading, addCard, updateCard, deleteCard, getCardUsed, getCardAvailable, payInvoice } = useCreditCards();
+  const { addTransaction } = useFinancialData();
   const [formOpen, setFormOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
   const [detailCard, setDetailCard] = useState<CreditCard | null>(null);
 
   const handleEdit = (card: CreditCard) => { setEditingCard(card); setFormOpen(true); };
   const handleCloseForm = () => { setFormOpen(false); setEditingCard(null); };
+
+  const handlePayInvoice = async (cardId: string, amount: number, paymentMethod: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    
+    // Create an expense transaction to deduct from cash balance
+    addTransaction({
+      type: 'expense',
+      description: `Pagamento fatura - ${card.name}`,
+      amount,
+      category: 'Cartão de Crédito',
+      dueDate: new Date().toISOString().split('T')[0],
+      status: 'paid',
+      paymentMethod,
+      paymentDate: new Date().toISOString().split('T')[0],
+    });
+    
+    await payInvoice(cardId);
+  };
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Carregando cartões...</p></div>;
 
@@ -53,6 +74,7 @@ const Cartoes: React.FC = () => {
             const limit = Number(card.credit_limit);
             const available = getCardAvailable(card.id);
             const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+            const invoiceStatus = getInvoiceStatus(card);
 
             return (
               <Card key={card.id} className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDetailCard(card)}>
@@ -72,9 +94,13 @@ const Cartoes: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="secondary">{brandLabels[card.brand] || card.brand}</Badge>
                     {card.last_four_digits && <span className="text-xs text-muted-foreground">•••• {card.last_four_digits}</span>}
+                    <Badge variant={invoiceStatus.isClosed ? 'destructive' : 'default'} className="flex items-center gap-1 text-xs">
+                      {invoiceStatus.isClosed ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                      {invoiceStatus.label}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -100,7 +126,6 @@ const Cartoes: React.FC = () => {
         </div>
       )}
 
-      {/* Gráfico de evolução */}
       {cards.length > 0 && (
         <CreditCardSpendingChart cards={cards} transactions={cardTransactions} />
       )}
@@ -118,6 +143,7 @@ const Cartoes: React.FC = () => {
           onClose={() => setDetailCard(null)}
           card={detailCard}
           transactions={cardTransactions}
+          onPayInvoice={handlePayInvoice}
         />
       )}
     </div>
