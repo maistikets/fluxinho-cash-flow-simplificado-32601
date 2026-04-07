@@ -106,7 +106,7 @@ export const useFinancialData = () => {
       date: newTransaction.dueDate,
       status: newTransaction.status || 'pending',
       is_recurring: newTransaction.isRecurring || false,
-      recurring_frequency: newTransaction.recurringFrequency || null,
+      recurring_frequency: (newTransaction.recurringFrequency as any) || null,
       notes: newTransaction.paymentMethod ? `Método: ${newTransaction.paymentMethod}` : null,
     });
   }, [supaAddTransaction]);
@@ -120,7 +120,7 @@ export const useFinancialData = () => {
       date: updatedTransaction.dueDate,
       status: updatedTransaction.status || 'pending',
       is_recurring: updatedTransaction.isRecurring || false,
-      recurring_frequency: updatedTransaction.recurringFrequency || null,
+      recurring_frequency: (updatedTransaction.recurringFrequency as any) || null,
       notes: updatedTransaction.paymentMethod ? `Método: ${updatedTransaction.paymentMethod}` : null,
     });
   }, [supaUpdateTransaction]);
