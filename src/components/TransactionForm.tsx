@@ -72,6 +72,29 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   });
   const { toast } = useToast();
 
+  // Reset form when editingTransaction changes or dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        description: editingTransaction?.description || '',
+        amount: editingTransaction?.amount?.toString() || '',
+        category: editingTransaction?.category || '',
+        customCategory: '',
+        dueDate: editingTransaction?.dueDate || '',
+        client: editingTransaction?.client || '',
+        phone: editingTransaction?.phone || '',
+        paymentMethod: editingTransaction?.paymentMethod || '',
+        paymentDate: editingTransaction?.paymentDate || '',
+        isPaid: editingTransaction?.status === 'paid' || false,
+        isRecurring: editingTransaction?.isRecurring || false,
+        recurringFrequency: (editingTransaction?.recurringFrequency || 'monthly') as Transaction['recurringFrequency'],
+        recurringEndDate: editingTransaction?.recurringEndDate || '',
+        selectedCardId: '',
+        installments: '1',
+      });
+    }
+  }, [isOpen, editingTransaction]);
+
   const filteredCategories = categories.filter(cat => cat.type === type);
   const isCreditCard = formData.paymentMethod === 'cartao_credito';
 
