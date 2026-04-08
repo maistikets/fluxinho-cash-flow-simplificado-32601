@@ -155,6 +155,54 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          days_before_due: number
+          due_alerts: boolean
+          email_notifications: boolean
+          frequency: string
+          id: string
+          overdue_alerts: boolean
+          payment_reminders: boolean
+          push_notifications: boolean
+          recurring_alerts: boolean
+          report_alerts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          days_before_due?: number
+          due_alerts?: boolean
+          email_notifications?: boolean
+          frequency?: string
+          id?: string
+          overdue_alerts?: boolean
+          payment_reminders?: boolean
+          push_notifications?: boolean
+          recurring_alerts?: boolean
+          report_alerts?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          days_before_due?: number
+          due_alerts?: boolean
+          email_notifications?: boolean
+          frequency?: string
+          id?: string
+          overdue_alerts?: boolean
+          payment_reminders?: boolean
+          push_notifications?: boolean
+          recurring_alerts?: boolean
+          report_alerts?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -187,27 +235,57 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_number: string | null
           avatar_url: string | null
+          cep: string | null
+          city: string | null
+          company: string | null
+          complement: string | null
+          cpf: string | null
           created_at: string
           email: string
           id: string
           name: string
+          neighborhood: string | null
+          phone: string | null
+          state: string | null
+          street: string | null
           updated_at: string
         }
         Insert: {
+          address_number?: string | null
           avatar_url?: string | null
+          cep?: string | null
+          city?: string | null
+          company?: string | null
+          complement?: string | null
+          cpf?: string | null
           created_at?: string
           email: string
           id: string
           name: string
+          neighborhood?: string | null
+          phone?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
         }
         Update: {
+          address_number?: string | null
           avatar_url?: string | null
+          cep?: string | null
+          city?: string | null
+          company?: string | null
+          complement?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string
           id?: string
           name?: string
+          neighborhood?: string | null
+          phone?: string | null
+          state?: string | null
+          street?: string | null
           updated_at?: string
         }
         Relationships: []
