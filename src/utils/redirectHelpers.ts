@@ -5,10 +5,10 @@ import { isTrialExpired } from './trialHelpers';
 export const getRedirectPath = (user: User | null, currentPath: string): string | null => {
   if (!user) {
     // Usuário não logado
-    const protectedPaths = ['/dashboard', '/profile', '/plan-settings'];
-    const isAdminPath = currentPath.startsWith('/admin');
+    const publicPaths = ['/', '/login', '/plans', '/checkout', '/payment-success', '/payment-canceled'];
+    const isPublic = publicPaths.includes(currentPath);
     
-    if (protectedPaths.includes(currentPath) || isAdminPath) {
+    if (!isPublic) {
       return '/login';
     }
     return null;
