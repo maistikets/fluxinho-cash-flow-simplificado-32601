@@ -50,12 +50,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const legacyUser = useMemo((): LegacyUser | null => {
     if (!auth.user) return null;
     
+    // Don't create the legacy user until subscription data is loaded
+    // to avoid false 'trial' defaults that trigger wrong redirects
+    const planType = auth.subscription?.plan_type ?? 'trial';
+    const isExpired = auth.subscription ? auth.isTrialExpired() : false;
+    
     return {
       id: auth.user.id,
       name: auth.profile?.name || auth.user.email || 'Usuário',
       email: auth.user.email || '',
       role: auth.roles.some(r => r.role === 'admin') ? 'admin' : 'user',
-      planType: auth.subscription?.plan_type || 'trial',
+      planType,
       isActive: auth.subscription?.is_active ?? true,
       createdAt: auth.profile?.created_at || new Date().toISOString(),
       trialStartDate: auth.subscription?.trial_start_date || undefined,
@@ -65,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       nextPaymentDate: auth.subscription?.next_payment_date || undefined,
       totalPaid: auth.subscription?.total_paid || 0,
       monthlyRevenue: auth.subscription?.monthly_revenue || 0,
-      isTrialExpired: auth.isTrialExpired(),
+      isTrialExpired: isExpired,
     };
   }, [auth.user, auth.profile, auth.subscription, auth.roles, auth.isTrialExpired]);
 
